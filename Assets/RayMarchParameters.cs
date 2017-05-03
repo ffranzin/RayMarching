@@ -65,7 +65,7 @@ public class RayMarchParameters : SceneViewFilter
         EffectMaterial.SetMatrix("_CameraInvViewMatrix", CurrentCamera.cameraToWorldMatrix);
         EffectMaterial.SetVector("_cameraWS", CurrentCamera.transform.position);
         EffectMaterial.SetVector("_LightDir", SunLight ? SunLight.forward : Vector3.down);
-
+        EffectMaterial.SetFloat("_CameraDepthTexture", _CurrentCamera.depth);
         CustomGraphicsBlit(source, destination, EffectMaterial, 0);
         //Graphics.Blit(source, destination, EffectMaterial, 0);
     }

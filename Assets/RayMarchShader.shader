@@ -26,10 +26,10 @@ Shader "Effects/RayMarchShader"
 			uniform float4x4 _CameraInvViewMatrix;
 			uniform float4 _MainTex_TexelSize;
 			sampler2D _MainTex;
+			uniform sampler2D _CameraDepthTexture;
 			uniform float3 _LightDir;
 			uniform float3 _cameraWS;
 			fixed4 colorTest = fixed4(1,0,0,0);
-
 			fixed4 _Color;
 
 			struct appdata
@@ -75,10 +75,10 @@ Shader "Effects/RayMarchShader"
 			}
 
 
-			//Parameters: ro = rayOrigin rd = rayDirection
-			fixed4 RayMarching( float3 ro, float3 rd)
+			//Parameters: ro = rayOrigin ** rd = rayDirection ** db = Depth buffer calculated on vertexShader
+			fixed4 RayMarching( float3 ro, float3 rd, float db)
 			{
-				fixed4 ret = fixed4(1,0,0,0);
+				fixed4 colorReturned = fixed4(1,0,0,0);
 
 				const int maxStep = 128;
 				float dist = 0;
@@ -89,16 +89,22 @@ Shader "Effects/RayMarchShader"
 
 					float d = map(p);
 
+					if(dist >= db)
+					{
+						colorReturned = fixed4(0,0,0,0);
+						break;
+					}
+
 					if(d < 0.001)
 					{
 						float nor = CalcNormal(p);
-						ret = fixed4(dot(- _LightDir.xyz, nor).rrr, 1);
+						colorReturned = fixed4(dot(- _LightDir.xyz, nor).rrr, 1);
 						break;
 					}
 
 					dist += d;
 				}
-				return ret;
+				return colorReturned;
 			}
 
 
@@ -119,18 +125,30 @@ Shader "Effects/RayMarchShader"
 				#endif		
 				
 				OUT.ray = _FrustumCornerES[(int)index].xyz;
+				OUT.ray /= abs(OUT.ray.z);
 				OUT.ray = mul(_CameraInvViewMatrix, OUT.ray);
 
 				return OUT;
 			}
 			
-			fixed4 frag (v2f i) : SV_Target
+			fixed4 frag (v2f IN) : SV_Target
 			{	
 				float3 ro = _cameraWS;
-				float3 rd = normalize(i.ray.xyz);
+				float3 rd = normalize(IN.ray.xyz);
 
-				fixed3 col = tex2D(_MainTex, i.uv);
-				fixed4 add = RayMarching(ro, rd);
+				float2 frag_uv = IN.uv;
+
+				#if UNITY_UV_STARTS_AT_TOP
+					if (_MainTex_TexelSize.y < 0)
+						frag_uv.y = 1 - frag_uv.y;
+				#endif
+
+				float depth = LinearEyeDepth(tex2D(_CameraDepthTexture, frag_uv).r);
+
+				depth *= length(IN.ray.xyz);
+
+				fixed3 col = tex2D(_MainTex, IN.uv);
+				fixed4 add = RayMarching(ro, rd, depth);
 				
 				return fixed4(col*(1.0 - add.w) + add.xyz * add.w, 1.0);
 			}
