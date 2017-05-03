@@ -14,11 +14,12 @@ public class RayMarchParameters : SceneViewFilter
     [SerializeField]
     private Shader _EffectShader;
     public Transform SunLight;
-
+    private Matrix4x4 m_matTorus;
 
     void Start()
     {
         CurrentCamera.depthTextureMode = DepthTextureMode.Depth;
+        m_matTorus = new Matrix4x4();
     }
 
 
@@ -61,11 +62,16 @@ public class RayMarchParameters : SceneViewFilter
             return;
         }
 
+        MatTorus();
+
         EffectMaterial.SetMatrix("_FrustumCornerES", GetFrustumCorners(CurrentCamera));
         EffectMaterial.SetMatrix("_CameraInvViewMatrix", CurrentCamera.cameraToWorldMatrix);
         EffectMaterial.SetVector("_cameraWS", CurrentCamera.transform.position);
         EffectMaterial.SetVector("_LightDir", SunLight ? SunLight.forward : Vector3.down);
         EffectMaterial.SetFloat("_CameraDepthTexture", _CurrentCamera.depth);
+        EffectMaterial.SetMatrix("_MatTorus_InvModel", m_matTorus.inverse);
+
+
         CustomGraphicsBlit(source, destination, EffectMaterial, 0);
         //Graphics.Blit(source, destination, EffectMaterial, 0);
     }
@@ -128,4 +134,12 @@ public class RayMarchParameters : SceneViewFilter
         return frustumCorners;
     }
 
+    private void MatTorus()
+    {
+        Vector3 translation = Vector3.right * Mathf.Sin(Time.time) * 3;
+        Vector3 scale = Vector3.one;
+        Quaternion rotation = Quaternion.Euler(new Vector3(0,0,(Time.time * 100)%360));
+
+        m_matTorus = Matrix4x4.TRS(translation, rotation, scale);
+    }
 }

@@ -23,6 +23,7 @@ Shader "Effects/RayMarchShader"
 			#include "UnityCG.cginc"
 
 			uniform float4x4 _FrustumCornerES;
+			uniform float4x4 _MatTorus_InvModel;
 			uniform float4x4 _CameraInvViewMatrix;
 			uniform float4 _MainTex_TexelSize;
 			sampler2D _MainTex;
@@ -45,6 +46,29 @@ Shader "Effects/RayMarchShader"
 				float3 ray : TEXCOORD1;
 			};
 
+
+			////////////////////////////////////////////////////////////////////////////////////////
+			///functions from : http://iquilezles.org/www/articles/distfunctions/distfunctions.htm
+			////////////////////////////////////////////////////////////////////////////////////////
+
+			//union
+			float opU( float d1, float d2 )
+			{
+				return min(d1,d2);
+			}
+
+			//subtraction
+			float opS( float d1, float d2 )
+			{
+				return max(-d1,d2);
+			}
+
+			//intersection
+			float opI( float d1, float d2 )
+			{
+				return max(d1,d2);
+			}
+
 			float sdSphere( float3 p, float s )
 			{
 			  return length(p) - s;
@@ -56,11 +80,35 @@ Shader "Effects/RayMarchShader"
 				return length(q) - t.y;
 			}
 
+			float sdBox(float3 p, float3 b)
+			{
+				float3 d = abs(p) - b;
+				return min(max(d.x, max(d.y, d.z)), 0.0) +
+					length(max(d, 0.0));
+			}
 			
 			float map(float3 p) {
-				return sdSphere(p, 1);
-				return sdTorus(p, float2(1, 0.2));
+				float4 q = mul(_MatTorus_InvModel, float4(p, 1));
+			
+				float torus = sdTorus(q.xyz, float2(1, 0.2));
+
+				float unionBox = opU(
+					sdBox(p - float3(-5, 0, 0), float3(1,1,1)), 
+					sdBox(p - float3(-4.5, 0.5, 0.5), float3(1,1,1)) 
+				);
+
+				float differenceBox = opS(
+					sdBox(p - float3(5, 0, 0), float3(1,1,1)), 
+					sdBox(p - float3(4.5, 0.5, 0.5), float3(1,1,1)) 
+				);
+
+				float u1 = opU(differenceBox, unionBox);
+
+				return opU(u1, torus);
 			}
+
+			////
+
 
 			float3 CalcNormal(float3 pos)
 			{
