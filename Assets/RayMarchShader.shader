@@ -28,10 +28,12 @@ Shader "Effects/RayMarchShader"
 			uniform float4 _MainTex_TexelSize;
 			sampler2D _MainTex;
 			uniform sampler2D _CameraDepthTexture;
+			uniform sampler2D _ColorRamp;;
 			uniform float3 _LightDir;
 			uniform float3 _cameraWS;
 			fixed4 colorTest = fixed4(1,0,0,0);
 			fixed4 _Color;
+
 
 			struct appdata
 			{
@@ -50,6 +52,18 @@ Shader "Effects/RayMarchShader"
 			////////////////////////////////////////////////////////////////////////////////////////
 			///functions from : http://iquilezles.org/www/articles/distfunctions/distfunctions.htm
 			////////////////////////////////////////////////////////////////////////////////////////
+
+			// Union (with material data)
+			float2 _opU( float2 d1, float2 d2 )
+			{
+				return (d1.x < d2.x) ? d1 : d2;
+			}
+
+			// Union (with material data)
+			float2 _opS( float2 d1, float2 d2 )
+			{
+				return (-d1.x > d2.x) ? d1 : d2;
+			}
 
 			//union
 			float opU( float d1, float d2 )
@@ -86,8 +100,11 @@ Shader "Effects/RayMarchShader"
 				return min(max(d.x, max(d.y, d.z)), 0.0) +
 					length(max(d, 0.0));
 			}
-			
-			float map(float3 p) {
+			////////////////////////////////////////////////////////////////////////////////////////
+			////////////////////////////////////////////////////////////////////////////////////////
+
+
+			float2 map(float3 p) {
 				float4 q = mul(_MatTorus_InvModel, float4(p, 1));
 			
 				float torus = sdTorus(q.xyz, float2(1, 0.2));
@@ -102,12 +119,17 @@ Shader "Effects/RayMarchShader"
 					sdBox(p - float3(4.5, 0.5, 0.5), float3(1,1,1)) 
 				);
 
-				float u1 = opU(differenceBox, unionBox);
+				float2 d_torus = float2(torus, 0.2);
+				float2 d_unionBox = float2(unionBox, 0.6);
+				float2 d_differenceBox = float2(differenceBox, 0.9);
 
-				return opU(u1, torus);
+
+				float2 u1 = _opU(d_differenceBox, d_unionBox);
+
+				return _opU(u1, d_torus);
 			}
 
-			////
+			
 
 
 			float3 CalcNormal(float3 pos)
@@ -126,31 +148,33 @@ Shader "Effects/RayMarchShader"
 			//Parameters: ro = rayOrigin ** rd = rayDirection ** db = Depth buffer calculated on vertexShader
 			fixed4 RayMarching( float3 ro, float3 rd, float db)
 			{
-				fixed4 colorReturned = fixed4(1,0,0,0);
+				fixed4 colorReturned = fixed4(0,0,0,0);
 
-				const int maxStep = 128;
+				const int maxStep = 65;
 				float dist = 0;
+				float maxDrawDist = 40;
 
-				for(int i=0; i<maxStep; i = i+1)
+				for(int i=0; i<maxStep; i++)
 				{
 					float3 p = ro + rd * dist;
 
-					float d = map(p);
+					float2 d = map(p);
 
-					if(dist >= db)
+					if(dist >= db || dist > maxDrawDist )
 					{
 						colorReturned = fixed4(0,0,0,0);
 						break;
 					}
-
-					if(d < 0.001)
+					
+					if(d.x < 0.001)
 					{
 						float nor = CalcNormal(p);
-						colorReturned = fixed4(dot(- _LightDir.xyz, nor).rrr, 1);
+						float light = dot(- _LightDir.xyz, nor);
+						colorReturned = fixed4(tex2D(_ColorRamp, float2(d.y, 0)).xyz * light, 1);
 						break;
 					}
 
-					dist += d;
+					dist += d.x;
 				}
 				return colorReturned;
 			}

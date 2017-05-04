@@ -4,13 +4,14 @@ using UnityEngine;
 
 public class LightRotation : MonoBehaviour {
 
-	// Use this for initialization
-	void Start () {
-		
-	}
+    public bool enabled = true;
 	
 	// Update is called once per frame
 	void Update () {
+
+        if (!enabled)
+            return;
+
         float angle = Time.time % 360;
         float radius = 5;
 

@@ -10,11 +10,12 @@ using UnityEngine;
 [AddComponentMenu("Effects/RayMarch")]
 public class RayMarchParameters : SceneViewFilter
 {
-
     [SerializeField]
     private Shader _EffectShader;
     public Transform SunLight;
     private Matrix4x4 m_matTorus;
+    public Texture2D _ColorRamp;
+
 
     void Start()
     {
@@ -70,7 +71,7 @@ public class RayMarchParameters : SceneViewFilter
         EffectMaterial.SetVector("_LightDir", SunLight ? SunLight.forward : Vector3.down);
         EffectMaterial.SetFloat("_CameraDepthTexture", _CurrentCamera.depth);
         EffectMaterial.SetMatrix("_MatTorus_InvModel", m_matTorus.inverse);
-
+        EffectMaterial.SetTexture("_ColorRamp", _ColorRamp);
 
         CustomGraphicsBlit(source, destination, EffectMaterial, 0);
         //Graphics.Blit(source, destination, EffectMaterial, 0);

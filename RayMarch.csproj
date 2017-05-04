@@ -78,6 +78,8 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Assets\CameraController.cs" />
+    <Compile Include="Assets\LightRotation.cs" />
     <Compile Include="Assets\RayMarchParameters.cs" />
     <Compile Include="Assets\SceneViewFilter.cs" />
   </ItemGroup>
